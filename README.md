@@ -11,7 +11,7 @@ We start by generating data from Erdos-Renyi graph.
 . mat data = r(data}
 . svmat data
 
-Now, we estimate tje inverse covariance matrix using data input as variable names and lambda = 0.2.
+Now, we estimate the inverse covariance matrix using data input as variable names and lambda = 0.2.
 
 . glasso data1-data50, lambda(0.2)
 
