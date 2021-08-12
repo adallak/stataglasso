@@ -17,11 +17,13 @@ Now, we estimate the inverse covariance matrix using data input as variable name
 
 ```s
 . glasso data1-data50, lambda(0.2)
+. mat list r(Omega)
 ```
 
 Next, we illustrate the glasso with K-fold cross-validation.
 
 ```s
 . cvglasso data1-data50, nfold(5) nlam(40) crit(loglik)
+. mat list r(Omega)
 ```
 More example can be found in `stockanalysis.do` and `protainanalysis.do` files.
