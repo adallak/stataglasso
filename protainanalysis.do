@@ -1,6 +1,6 @@
 clear all
 
-do glasso.ado
+//do glasso.ado
 
 import delimited protain, clear
 
@@ -32,13 +32,15 @@ import delimited protain, clear
 standardize praf-pjnk
 matrix X = r(X)
 
-
+// Run glasso with eBIC
 cvglasso X,  gamma(0.5) nlam(20) crit(eBIC) 
 
 mat eBICOmega = r(Omega) 
 local bic = round(r(lambda), 0.0001)
 
-cvglasso X,  nlam(20) 
+
+// Run glasso with CV
+cvglasso X,  nlam(20) crit(loglik)
 
 mat cvOmega = r(Omega) 
 local cv = round(r(lambda), 0.0001)
@@ -49,6 +51,7 @@ mat lambda = `cv',`bic'
 
 //plotglasso eBICOmega, type(matrix) saving(bicprotain,replace) 
 
+// Plot the results 
 plotglasso cvOmega, type(graph) saving(cvprotaingraph,replace) layout(circle) newlabs("Raf" "Mek"  "Plcg"  "PIP2"  "PIP3"  "Erk"  "Akt"  "PKA"  "PKC"  "P38"  "Jnk") lab title("CV, {&lambda} = `cv'") 
 plotglasso eBICOmega, type(graph) saving(bicprotaingraph,replace) layout(circle) newlabs("Raf" "Mek"  "Plcg"  "PIP2"  "PIP3"  "Erk"  "Akt"  "PKA"  "PKC"  "P38"  "Jnk") lab title("eBIC, {&lambda} = `bic'")
 plotglasso cvOmega, type(matrix) saving(cvprotainmat,replace)
