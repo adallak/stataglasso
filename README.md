@@ -1,7 +1,7 @@
 # stataglasso
 
 Stata command for the sparse inverse covariance matrix estimation through
-Graphical lasso algorithm. For details see `glasso.sthlp` and `cvglasso.sthlp`. 
+Graphical lasso algorithm (Friedman et.al 2008). For details see `glasso.sthlp` and `cvglasso.sthlp`. 
 
 The toy example below illustrates the use of the command.
 
