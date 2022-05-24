@@ -11,7 +11,7 @@ The toy example below illustrates the use of the commands.
 We start by generating data from Erdos-Renyi graph.
 
 ```s
-. randomgraph ,n(300) p(50)
+. randomgraph, n(300) p(50)
 ```
 
 Now, we estimate the inverse covariance matrix using data input as variable names and lambda = 0.2.
