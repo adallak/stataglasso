@@ -5,7 +5,7 @@ clear all
 
 /// Generate n =100, p =150 data from the random graph with the default value of probabilities between edges.
 set seed 200
-randomgraph ,n(100) p(50) prob(0.1) //seed(400) 
+randomgraph, n(200) p(50) prob(0.1) //seed(400) 
 matrix TOmega =  r(Omega)
 
 return list
@@ -28,7 +28,7 @@ scalar lambda_cv = r(lambda)
 mat list r(Omega)
 di r(lambda)
 
-/// Choosing tuning parameter through ebic  
+/// Choosing tuning parameter through bic  
 cvglasso data, nlam(20)  crit(eBIC) gamma(0)
 mat BICOmega = r(Omega)
 scalar lambda_bic = r(lambda)
@@ -40,6 +40,12 @@ cvglasso data, nlam(20) crit(eBIC) gamma(0.5)
 mat eBICOmega = r(Omega)
 scalar lambda_ebic = r(lambda)
 di lambda_ebic
+
+/// Choosing tuning parameter through aic  
+cvglasso data, nlam(20)  crit(AIC)
+mat AICOmega = r(Omega)
+scalar lambda_aic = r(lambda)
+di lambda_aic
 
 
 // Let plot matrices together using wrapped function plot_precision
@@ -68,15 +74,15 @@ plotglasso eBICOmega, type(matrix) title(eBIC,position(12)) saving(ebicomega,rep
 gr combine "trueomega" "cvomega" "bicomega" "ebicomega"
 
 /// Now let compare the result 
-compareGraph CVOmega, true(TOmega)
+comparegraph CVOmega, true(TOmega)
 
 return list
 
-compareGraph BICOmega, true(TOmega)
+comparegraph BICOmega, true(TOmega)
 
 return list
 
-compareGraph eBICOmega, true(TOmega)
+comparegraph eBICOmega, true(TOmega)
 
 return list
 
