@@ -1,79 +1,4 @@
 *! version 1.0.0  08apr2022
-
-
-///////////////////////////////////////////////////////////////////
-////////////// Train glasso based on cv criteria 
-///////////////////////////////////////////////////////////////////
-
-program cvglasso, eclass
-version 16
-
-////neq code
-	_parse comma matrix rest : 0
-	capture confirm matrix `matrix'
-
-	if _rc == 0 {            // syntax 2:  matrix
-		local syntax 2
-		syntax [anything(name=matrix)] ///
-				[, lamlist(numlist) ///
-				max_iter(integer 100)     ///  
-				TOLerance(real 1e-5)      ///
-				nlam(integer 40)          /// 
-				nfold(integer 5)          /// 
-				gamma(real 0.5)           ///
-				crit(string)             ///
-				cvmethod(string)        ///
-				start(string)           ///
-				diag                   ///
-				verbose] //NOSTANDardize
-	}
-	else {                                        // syntax 1: varlist
-		local syntax 1
-		syntax varlist(min=2 numeric) [if] [in] ///
-				[, lamlist(numlist)  ///
-			max_iter(integer 100) ///
-			TOLerance(real 1e-5)  ///
-			nlam(integer 40)     ///
-			nfold(integer 5)    ///
-			gamma(real 0.5)    ///
-			crit(string)       ///
-			cvmethod(string)   /// 
-			start(string)           ///
-			diag		///
-			verbose] //NOSTANDardize
-		marksample touse
-		markout `touse'
-	}
-	capt mata mata which mm_srswor()
-	if _rc!= 0 {
-		 di as txt "user-written package moremata needs to be installed first;"
-		 di as txt "use -ssc install moremata- to do that"
-		 exit 498
-	}
-	mata: r = CV_GLasso(1)
-	if `syntax' == 1{
-		mata: r.setup("`varlist'", "`touse'", "`lamlist'", ///
-		`nlam', `nfold', `max_iter', `tolerance', `gamma', ///
-		"`crit'", "`cvmethod'" , "`start'", "`diag'", "`verbose'") //"`nostandardize'", 
-	}
-	else{
-		mata: X = st_matrix("`matrix'")
-		mata: r.setup1(X, "`lamlist'", `nlam', `nfold', ///
-		`max_iter', `tolerance', `gamma', "`crit'", ///
-		"`cvmethod'", "`start'", "`diag'", "`verbose'") //"`nostandardize'"
-	}
-//	matrix colnames CVvalues = "Threshold" "Value"
-//	ereturn matrix CVvalues
-	//return add
-end
-//////////////
-
-
-
-
-
-/*
-
 version 16
 set matastrict on
 
@@ -107,7 +32,7 @@ class GLasso
 		real scalar             	p()      // # X vars 
 		real scalar             	ispdf()
 		real matrix            		standardizeX()
-		struct GLasso_result scalar GLasso_fit()
+		struct GLasso_result scalar 	GLasso_fit()
 		real scalar			soft()
 		real matrix 			S
 		real matrix 			Omega
@@ -122,7 +47,8 @@ class GLasso
 		pointer(real matrix) scalar 	X  
 		real scalar			lambda
 		struct GLasso_result scalar 	result
-		real matrix 			init			
+		real matrix 			init	
+		real matrix			init_omega
 		
 	private:
 		real matrix			W
@@ -131,14 +57,15 @@ class GLasso
 		real matrix			standardizedX
 		real scalar             	X_st
 		real rowvector          	mean_X
+		real scalar			totaliter
 	
 }
 
 
 ///////////////////////NEW CODE for the syntax ////////////////////////////////
 void GLasso::setup1(real matrix user_X, real scalar lbd, ///
-		real scalar max_iter, real scalar tolerance, | ///
-		string scalar diag, real matrix init_O) //string scalar nostandardize,
+		real scalar max_iter, real scalar tolerance, ///
+		| string scalar diag, real matrix init_s, real matrix init_o) //string scalar nostandardize,
 {
 	string colvector cv
 //	if(nostandardize == "")
@@ -171,22 +98,29 @@ void GLasso::setup1(real matrix user_X, real scalar lbd, ///
 	S = S()
 	if (args() == 6)
 	{
-		    init = init_O
+		init = init_s
+		init_omega = luinv(init_s)
+	}else if (args() > 6){
+		init = init_s
+		init_omega = init_o
+
 	}else{
-	    if(diag != "")
-		{
-			init = S + lambda * diag(J(1,p(),1))
-		}else{
-		    init = S
-		}
+			if(diag != "")
+			{
+			init = S + lambda * diag(J(1,p(),1)) 
+			}else{
+			    init = S
+			}
+			init_omega = diag(1:/diagonal(init)) 
 	}
 	result = GLasso_fit(max_iter, tolerance, diag) //, nostandardize
 	Omega = result.Omega
 	Omega_inv =  result.Omega_inv
-	st_rclear()
-	st_matrix("r(Omega)", Omega)
-	st_matrix("r(Sigma)", Omega_inv)
-	st_matrix("r(lambda)", lambda)
+	st_eclear()
+	st_matrix("e(Omega)", Omega)
+	st_matrix("e(Sigma)", Omega_inv)
+	st_matrix("e(lambda)", lambda)
+	st_numscalar("r(totaliter)", totaliter)
 }
 
 
@@ -197,7 +131,7 @@ void GLasso::setup1(real matrix user_X, real scalar lbd, ///
 void GLasso::setup(string scalar varlist, string scalar touse, ///
 			real scalar lbd, real scalar max_iter, ///
 			real scalar tolerance,| string scalar diag, ///
-			real matrix init_O) //string scalar nostandardize, 
+			real matrix init_s, real matrix init_o ) //string scalar nostandardize, 
 {
 	real matrix user_X
 	string colvector cv
@@ -212,36 +146,41 @@ void GLasso::setup(string scalar varlist, string scalar touse, ///
 	lambda = lbd
 		if(lambda < 0)
 	{
-	    errprintf("lambda must be positive \n")
+		errprintf("lambda must be positive \n")
 		exit(498)
 	}
 	if(max_iter < 0)
 	{
-	    errprintf("Number of iterations should be positive \n")
+		errprintf("Number of iterations should be positive \n")
 		exit(498)
 	}
 	if(tolerance < 0)
 	{
-	    errprintf("Threshold should be positive")
+		errprintf("Threshold should be positive")
 		exit(498)
 	}
 	if(cols(*X) < 2)
 	{
-	    errprintf("Number of variables should be >2. \n")
+		errprintf("Number of variables should be >2. \n")
 		exit(498)
 	}
 
 	S = S()
 	if (args() == 7)
 	{
-			init = init_O
+		init = init_s
+		init_omega = luinv(init_s)
+	}else if (args() > 7){
+		init = init_s
+		init_omega = init_o
 	}else{
-	    if(diag != "")
+		if(diag != "")
 		{
 			init = S + lambda * diag(J(1,p(),1)) 
 		}else{
 		    init = S
 		}
+		init_omega = diag(1:/diagonal(init)) 
 	
 	}
 	cv = tokens(varlist)
@@ -255,9 +194,11 @@ void GLasso::setup(string scalar varlist, string scalar touse, ///
 	result = GLasso_fit(max_iter, tolerance, diag) //nostandardize
 	Omega = result.Omega
 	Omega_inv =  result.Omega_inv
-	st_rclear()
-	st_matrix("r(Omega)", Omega)
-	st_matrix("r(Sigma)", Omega_inv)
+	st_eclear()
+	st_matrix("e(lambda)", lambda)
+	st_matrix("e(Omega)", Omega)
+	st_matrix("e(Sigma)", Omega_inv)
+	st_numscalar("r(totaliter)", totaliter)
 }
 
 
@@ -276,7 +217,7 @@ real rowvector GLasso::mean_X()
 real matrix GLasso::S()   
 {
 	// Function returns the sample covariance
-		S = quadcrossdev(*X, 0, mean_X(), *X, 0, mean_X()) :/ N()
+		S = quadcrossdev(*X, 0, mean_X(), *X, 0, mean_X()) :/ (N() - 1)
 	return(S)
 }
 
@@ -286,13 +227,14 @@ real matrix GLasso::standardizeX(real matrix X)
 	// Standardies X to have mean 0 and variance 1
 	real matrix diag_S, st_X
 	real vector sqrt_diag_S
+	real colvector inv_diag_S
 	st_X = X :- mean(X)
 	S = quadcross(st_X, st_X) / rows(X)
 	sqrt_diag_S = sqrt(diagonal(S))
+	sqrt_diag_S
 	diag_S = diag(1 :/ sqrt_diag_S)
-
+	inv_diag_S = (1 :/ sqrt_diag_S)
 	standardizedX = quadcross(st_X', diag_S)
-	
 	return(standardizedX)
 }
 
@@ -312,7 +254,7 @@ struct decomp_matrix scalar GLasso::block_decomp(real matrix mat, ///
 
 
 struct GLasso_result scalar GLasso::GLasso_fit(real scalar max_iter, ///
-			real scalar tolerance, string scalar diag) //string scalar nostandardize
+		real scalar tolerance, string scalar diag) //string scalar nostandardize
 {
 	struct decomp_matrix scalar dec1, dec2, dec3
 	struct GLasso_result scalar res
@@ -323,8 +265,9 @@ struct GLasso_result scalar GLasso::GLasso_fit(real scalar max_iter, ///
 	real matrix Omega_inv_old, Omega, Omega_inv, Omega_old
 	//Initialization of algorithm
 	Omega_inv = init
-	Omega =  diag(1:/diagonal(Omega_inv)) 
+	Omega =  init_omega //diag(1:/diagonal(Omega_inv)) 
 	iter = 0
+	totaliter = max_iter
 	converge_omega = 0
 			// Update diagonal
 	while((converge_omega == 0) & (iter <= max_iter))
@@ -374,6 +317,7 @@ struct GLasso_result scalar GLasso::GLasso_fit(real scalar max_iter, ///
 			if (sum(abs(Omega_inv - Omega_inv_old):^2) < tolerance)
 			{
 				converge_omega = 1
+				totaliter = i
 			}else{
 				iter = iter + 1
 			}
@@ -417,40 +361,3 @@ end
 
 
 
-//////////////////////////Function for simulation
-program define SIMglasso
-version 16
-	syntax ,n(integer) p(integer) prob(real) criteria(string)
-
-	randomgraph ,n(`n') p(`p') prob(`prob') 
-
-	matrix TOmega =  r(Omega)
-
-	// Extract the data and true Precision matrix
-	mat data = r(data)
-	if "`criteria'" == "CV"{
-	/// Choosing tuning parameter through 5-fold cross-validation  
-		cvglasso data, nlam(40) nfold(5)
-		mat CVOmega = r(Omega)
-			/// Now let compare the result 
-		compareGraph CVOmega, true(TOmega)
-	}
-	else if "`criteria'" == "BIC"{
-		/// Choosing tuning parameter through pure BIC 
-		ebicglasso data, nlam(40) gamma(0)
-		mat BICOmega = r(Omega)
-		mat lambda   = r(lambda)
-		compareGraph BICOmega, true(TOmega)
-	}
-	else if "`criteria'" == "eBIC"{
-		//Choosing tuning parameter through eBIC using gamma = 0.5
-		ebicglasso data, nlam(40) gamma(0.1)
-		mat eBICOmega = r(Omega)
-		mat lambda   = r(lambda)
-		compareGraph eBICOmega, true(TOmega)
-	}
-	else{
-	    di as error "Wrong criteria specified"
-	}
-	
-end

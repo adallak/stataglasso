@@ -66,11 +66,10 @@ Stata matrix as an input.
 {phang2}{cmd:. set seed 2}{p_end}
 
 {pstd}Setup by simulating data from {helpb randomgraph}{p_end}
-{phang2}{cmd:. randomgraph ,n(100) p(150)}{p_end}
+{phang2}{cmd:. randomgraph, n(100) p(150)}{p_end}
 
-{pstd} Extract variable names {p_end}
+{pstd} Save data as matrix {p_end}
 {phang2}{cmd:. mat data = r(data}} {p_end}
-{phang2}{cmd:. svmat data} {p_end}
 
 {pstd} Estimating inverse covariance matrix using data input as variable names and lambda = 0.2. {p_end}
 {phang2}{cmd:. glasso data1-data50, lambda(0.2)}{p_end}
@@ -83,16 +82,16 @@ Stata matrix as an input.
 {title:Stored results}
 
 {pstd}
-{cmd:glasso} stores the following in {cmd:r()}:
+{cmd:glasso} stores the following in {cmd:e()}:
 
 {synoptset 20 tabbed}{...}
 
 {p2col 5 20 24 2: Scalar}{p_end}
-{synopt:{cmd:r(lambda)}}Penalization parameter{p_end}
+{synopt:{cmd:e(lambda)}}Penalization parameter{p_end}
 
 {p2col 5 20 24 2: Matrices}{p_end}
-{synopt:{cmd:r(Omega)}}Sparse inverse covariance matrix{p_end}
-{synopt:{cmd:r(Sigma)}}Covariance matrix{p_end}
+{synopt:{cmd:e(Omega)}}Sparse inverse covariance matrix{p_end}
+{synopt:{cmd:e(Sigma)}}Covariance matrix{p_end}
 {p2colreset}{...}
 
 {marker reference}{...}
